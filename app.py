@@ -1,9 +1,9 @@
 """MarketMate - Streamlit frontend.
-Run:  pip install streamlit openai pypdf python-docx python-dotenv
+Run:  pip install -r requirements.txt
       streamlit run app.py
 Put AIKI_API_KEY and AIKI_BASE_URL in a .env file (never commit it). Without a key the app runs in demo mode.
 """
-import csv, io, os
+import csv, io, logging, os, re
 import streamlit as st
 
 try:
@@ -65,6 +65,8 @@ Always put the user's brand identity, audience, and marketing objectives first. 
 MODEL = os.getenv("AIKI_MODEL")
 BASE_URL = os.getenv("AIKI_BASE_URL")  # set in .env, not in code
 MAX_OUTPUT_TOKENS = 800  # every output token counts against the team's AK budget
+MAX_HISTORY = 12  # messages sent to the model per request
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 
 TOOLS = {
     "Campaign ideas": "Give me 3 to 5 campaign ideas, each with headline, channel, and suggested KPI.",
@@ -90,6 +92,8 @@ st.markdown(
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;500;600&display=swap');
 html, body, [class*="st-"], .stMarkdown { font-family: 'Figtree', sans-serif; }
+/* the rule above also hits Streamlit's icon spans; restore the icon font so names don't render as text */
+[data-testid="stIconMaterial"], .material-symbols-rounded, .material-icons { font-family: 'Material Symbols Rounded' !important; }
 h1, h2, h3, .mm-title { font-family: 'Bricolage Grotesque', sans-serif; letter-spacing: -0.01em; }
 #MainMenu, footer { visibility: hidden; }
 .block-container { padding-top: 4rem; max-width: 1280px; }
@@ -134,10 +138,10 @@ def brief_text() -> str:
 
 def generate_reply(history) -> str:
     key = os.getenv("AIKI_API_KEY")
-    if not key or not BASE_URL:
+    if not key or not BASE_URL or not MODEL:
         return (
             "**Demo mode** (no API key found).\n\n"
-            "Once `AIKI_API_KEY` and `AIKI_BASE_URL` are set in `.env`, MarketMate's reply appears here.\n\n"
+            "Once `AIKI_API_KEY`, `AIKI_BASE_URL` and `AIKI_MODEL` are set in `.env`, MarketMate's reply appears here.\n\n"
             "| Date | Platform | Topic | Format | Objective |\n|---|---|---|---|---|\n"
             "| Week 1, Mon | Instagram | Product teaser | Reel | Reach |\n"
             "| Week 1, Thu | Instagram | Behind the scenes | Carousel | Engagement |"
@@ -151,18 +155,20 @@ def generate_reply(history) -> str:
         model=MODEL,
         max_completion_tokens=MAX_OUTPUT_TOKENS,
         messages=[{"role": "system", "content": system}]
-        + [{"role": m["role"], "content": m["content"]} for m in history],
+        + [{"role": m["role"], "content": m["content"]} for m in history if not m.get("error")][-MAX_HISTORY:],
     )
     return resp.choices[0].message.content or ""
 
 
 def table_to_csv(md: str):
     rows = [l for l in md.splitlines() if l.strip().startswith("|")]
-    rows = [r for r in rows if not set(r.replace("|", "").strip()) <= set("-: ")]
+    rows = [r for r in rows if not re.fullmatch(r"\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?", r.strip())]
     if len(rows) < 2:
         return None
     out = io.StringIO()
-    csv.writer(out).writerows([[c.strip() for c in r.strip().strip("|").split("|")] for r in rows])
+    # split on unescaped pipes only; "\|" is a literal pipe inside a cell
+    split = lambda r: [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", r.strip().strip("|"))]
+    csv.writer(out).writerows([split(r) for r in rows])
     return out.getvalue()
 
 
@@ -203,7 +209,8 @@ with chat_col:
 
     last = ss.messages[-1] if ss.messages else None
     if last and last["role"] == "assistant":
-        c1, c2, c3, c4, c5 = st.columns(5)
+        c1, c2, c3 = st.columns(3)
+        c4, c5, _ = st.columns(3)  # downloads on their own row so labels fit
         if c1.button("Write captions"):
             ss.pending = "Write captions for the top idea above."
             st.rerun()
@@ -228,20 +235,26 @@ with chat_col:
         with st.spinner("MarketMate is writing..."):
             try:
                 reply = generate_reply(ss.messages)
-            except Exception as e:
-                reply = f"Something went wrong while contacting the model: {e}. Check your API key and try again."
-        ss.messages.append({"role": "assistant", "content": reply})
+            except Exception:
+                logging.exception("model call failed")
+                reply, failed = "Something went wrong. Check your API key, base URL and model, then try again.", True
+            else:
+                failed = False
+        ss.messages.append({"role": "assistant", "content": reply, **({"error": True} if failed else {})})
         st.rerun()
 
 with brief_col:
     st.markdown("### Brand brief")
     ss.brief["name"] = st.text_input("Brand or product", ss.brief["name"], placeholder="Kape Barako")
     ss.brief["audience"] = st.text_input("Target audience", ss.brief["audience"], placeholder="Students, 18-25")
-    ss.brief["tone"] = st.selectbox("Tone", TONES, index=TONES.index(ss.brief["tone"]))
-    ss.brief["platform"] = st.selectbox("Platform", PLATFORMS, index=PLATFORMS.index(ss.brief["platform"]))
+    ss.brief["tone"] = st.selectbox("Tone", TONES, index=TONES.index(ss.brief["tone"]) if ss.brief["tone"] in TONES else 0)
+    ss.brief["platform"] = st.selectbox("Platform", PLATFORMS, index=PLATFORMS.index(ss.brief["platform"]) if ss.brief["platform"] in PLATFORMS else 0)
     up = st.file_uploader("Brand guide or draft copy", type=["pdf", "docx"])
-    if up:
-        ss.doc_text = extract_text(up)
+    if up and up.size > MAX_UPLOAD_BYTES:
+        st.error("File is over 5 MB. Upload a smaller file.")
+    elif up:
+        if ss.get("doc_id") != up.file_id:  # parse once per upload, not every rerun
+            ss.doc_text, ss.doc_id = extract_text(up), up.file_id
         if ss.doc_text:
             st.caption(f"Read {len(ss.doc_text):,} characters from {up.name}.")
     st.caption("Remove customer names and contact details before uploading.")
