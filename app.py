@@ -90,24 +90,46 @@ ss.setdefault("doc_text", "")
 st.markdown(
     """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;500;600&display=swap');
-html, body, [class*="st-"], .stMarkdown { font-family: 'Figtree', sans-serif; }
+@import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap');
+:root { --ink:#1A2238; --sheet:#F4F5F7; --paper:#fff; --marker:#FFD84A; --rule:#D9DDE5; --focus:#2F5BEA; }
+html, body, [class*="st-"], .stMarkdown { font-family: 'Schibsted Grotesk', sans-serif; }
 /* the rule above also hits Streamlit's icon spans; restore the icon font so names don't render as text */
 [data-testid="stIconMaterial"], .material-symbols-rounded, .material-icons { font-family: 'Material Symbols Rounded' !important; }
-h1, h2, h3, .mm-title { font-family: 'Bricolage Grotesque', sans-serif; letter-spacing: -0.01em; }
+h1, h2, h3, .mm-brand { font-family: 'Schibsted Grotesk', sans-serif; font-weight: 800; letter-spacing: -0.03em; }
 #MainMenu, footer { visibility: hidden; }
 .block-container { padding-top: 4rem; max-width: 1280px; }
-[data-testid="stSidebar"] { background: #F3F1EC; }
-[data-testid="stSidebar"] * { color: #1B1D1F; }
+[data-testid="stSidebar"] { background: #E9ECF1; }
+[data-testid="stSidebar"] * { color: var(--ink); }
 [data-testid="stSidebar"] div.stButton > button[kind="primary"] * { color: #fff; }
-.mm-brand { font-size: 1.5rem; font-weight: 700; margin-bottom: .2rem; }
-.mm-sub { color: #6b6b66; font-size: .85rem; margin-bottom: 1rem; }
-.mm-head { display:flex; justify-content:space-between; align-items:baseline;
-           border-bottom: 1px solid #e3e0d8; padding-bottom:.6rem; margin-bottom:1rem; }
-.mm-head b { font-size: 1.15rem; }
-.mm-pill { background:#17323A; color:#fff; border-radius:999px; padding:.15rem .7rem; font-size:.8rem; }
-div.stButton > button { border-radius: 10px; border: 1px solid #d6d2c8; }
-div.stButton > button[kind="primary"] { background:#17323A; border-color:#17323A; }
+.mm-brand { font-size: 1.7rem; line-height: 1; margin-bottom: .35rem; }
+.mm-sub { color: #5B6275; font-size: .85rem; margin-bottom: 1rem; }
+.mm-head { display:flex; justify-content:space-between; align-items:center;
+           border-bottom: 2px solid var(--ink); padding-bottom:.7rem; margin-bottom:1.4rem; }
+.mm-head b { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; }
+.mm-pill { background:var(--marker); color:var(--ink); border-radius:4px; padding:.2rem .6rem; font-size:.85rem; font-weight:600; }
+/* sidebar tool list reads as a plain menu; the primary action stays a solid button */
+[data-testid="stSidebar"] div.stButton > button:not([kind="primary"]) { background:transparent; border-color:transparent; justify-content:flex-start; }
+[data-testid="stSidebar"] div.stButton > button:not([kind="primary"]):hover { background:var(--marker); border-color:var(--ink); }
+div.stButton > button { border-radius: 8px; border: 1px solid var(--rule); background: var(--paper); }
+div.stButton > button:hover { border-color: var(--ink); color: var(--ink); }
+div.stButton > button[kind="primary"] { background:var(--ink); border-color:var(--ink); }
+button:focus-visible, input:focus-visible, textarea:focus-visible, [role="combobox"]:focus-visible { outline: 3px solid var(--focus) !important; outline-offset: 2px; }
+/* chat: MarketMate's replies are paper proofs, yours are ink chips */
+[data-testid^="stChatMessageAvatar"] { display: none; }
+[data-testid="stChatMessage"] { background: transparent; padding: 0; }
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+  background: var(--paper); border: 1px solid var(--rule); border-left: 8px solid var(--marker);
+  border-radius: 4px 14px 14px 4px; padding: 1.2rem 1.5rem; box-shadow: 4px 5px 0 rgba(26,34,56,.08); }
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) :is(p, li) {
+  font-family: 'Newsreader', Georgia, serif; font-size: 1.1rem; line-height: 1.65; max-width: 68ch; }
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+  background: var(--ink); color: #fff; width: fit-content; max-width: 80%; margin-left: auto;
+  border-radius: 14px 14px 4px 14px; padding: .7rem 1.1rem; }
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) * { color: #fff; }
+[data-testid="stSidebar"] div.stButton > button:not([kind="primary"]) > div { justify-content: flex-start; width: 100%; text-align: left; }
+[data-testid="stChatInput"] > div:first-child { border-radius: 12px; border-color: var(--rule) !important; }
+[data-testid="stChatInput"] > div:first-child:focus-within { border-color: var(--ink) !important; box-shadow: 0 0 0 3px var(--focus); }
+[data-testid="stChatInput"] textarea:focus-visible { outline: none !important; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 """,
