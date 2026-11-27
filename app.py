@@ -130,6 +130,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, [role="combob
 [data-testid="stChatInput"] > div:first-child { border-radius: 12px; border-color: var(--rule) !important; }
 [data-testid="stChatInput"] > div:first-child:focus-within { border-color: var(--ink) !important; box-shadow: 0 0 0 3px var(--focus); }
 [data-testid="stChatInput"] textarea:focus-visible { outline: none !important; }
+/* uploader hint is clipped and says 200MB; hide it, the real 5 MB limit is stated in the label */
+[data-testid="stFileUploaderDropzoneInstructions"] > div > span, [data-testid="stFileUploaderDropzoneInstructions"] small { display:none; }
+/* even action-button rows */
+div.stButton > button, div.stDownloadButton > button { width:100%; white-space:nowrap; }
+div.stDownloadButton > button { border-radius:8px; border:1px solid var(--rule); background:var(--paper); }
+div.stDownloadButton > button:hover { border-color:var(--ink); color:var(--ink); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 """,
@@ -232,7 +238,7 @@ with chat_col:
     last = ss.messages[-1] if ss.messages else None
     if last and last["role"] == "assistant":
         c1, c2, c3 = st.columns(3)
-        c4, c5, _ = st.columns(3)  # downloads on their own row so labels fit
+        c4, c5, _ = st.columns(3)
         if c1.button("Write captions"):
             ss.pending = "Write captions for the top idea above."
             st.rerun()
@@ -271,7 +277,7 @@ with brief_col:
     ss.brief["audience"] = st.text_input("Target audience", ss.brief["audience"], placeholder="Students, 18-25")
     ss.brief["tone"] = st.selectbox("Tone", TONES, index=TONES.index(ss.brief["tone"]) if ss.brief["tone"] in TONES else 0)
     ss.brief["platform"] = st.selectbox("Platform", PLATFORMS, index=PLATFORMS.index(ss.brief["platform"]) if ss.brief["platform"] in PLATFORMS else 0)
-    up = st.file_uploader("Brand guide or draft copy", type=["pdf", "docx"])
+    up = st.file_uploader("Brand guide or draft copy (PDF or DOCX, max 5 MB)", type=["pdf", "docx"])
     if up and up.size > MAX_UPLOAD_BYTES:
         st.error("File is over 5 MB. Upload a smaller file.")
     elif up:
