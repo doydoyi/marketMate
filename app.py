@@ -108,6 +108,12 @@ h1, h2, h3, .mm-title { font-family: 'Bricolage Grotesque', sans-serif; letter-s
 .mm-pill { background:#17323A; color:#fff; border-radius:999px; padding:.15rem .7rem; font-size:.8rem; }
 div.stButton > button { border-radius: 10px; border: 1px solid #d6d2c8; }
 div.stButton > button[kind="primary"] { background:#17323A; border-color:#17323A; }
+/* uploader hint is clipped and says 200MB; hide it, the real 5 MB limit is stated in the label */
+[data-testid="stFileUploaderDropzoneInstructions"] > div > span, [data-testid="stFileUploaderDropzoneInstructions"] small { display:none; }
+/* even action-button rows */
+div.stButton > button, div.stDownloadButton > button { width:100%; white-space:nowrap; border-radius:10px; border:1px solid #d6d2c8; }
+div.stButton > button:hover, div.stDownloadButton > button:hover { border-color:#17323A; color:#17323A; }
+[data-testid="stSidebar"] div.stButton > button:focus-visible, div.stButton > button:focus-visible { outline:2px solid #17323A; outline-offset:2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 """,
@@ -210,7 +216,7 @@ with chat_col:
     last = ss.messages[-1] if ss.messages else None
     if last and last["role"] == "assistant":
         c1, c2, c3 = st.columns(3)
-        c4, c5, _ = st.columns(3)  # downloads on their own row so labels fit
+        c4, c5, _ = st.columns(3)
         if c1.button("Write captions"):
             ss.pending = "Write captions for the top idea above."
             st.rerun()
@@ -249,7 +255,7 @@ with brief_col:
     ss.brief["audience"] = st.text_input("Target audience", ss.brief["audience"], placeholder="Students, 18-25")
     ss.brief["tone"] = st.selectbox("Tone", TONES, index=TONES.index(ss.brief["tone"]) if ss.brief["tone"] in TONES else 0)
     ss.brief["platform"] = st.selectbox("Platform", PLATFORMS, index=PLATFORMS.index(ss.brief["platform"]) if ss.brief["platform"] in PLATFORMS else 0)
-    up = st.file_uploader("Brand guide or draft copy", type=["pdf", "docx"])
+    up = st.file_uploader("Brand guide or draft copy (PDF or DOCX, max 5 MB)", type=["pdf", "docx"])
     if up and up.size > MAX_UPLOAD_BYTES:
         st.error("File is over 5 MB. Upload a smaller file.")
     elif up:
